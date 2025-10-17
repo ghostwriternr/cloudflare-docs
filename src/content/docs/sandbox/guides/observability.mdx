@@ -1,0 +1,121 @@
+---
+title: Observability
+pcx_content_type: how-to
+sidebar:
+  order: 8
+---
+
+import { TypeScriptExample } from "~/components";
+
+This guide shows you how to enable and view logs from your Sandbox applications.
+
+## Enable logging
+
+To view logs, enable Workers Logs in your `wrangler.jsonc`:
+
+```jsonc
+{
+  "name": "my-worker",
+  "observability": {
+    "enabled": true
+  }
+}
+```
+
+Deploy your Worker for logs to start appearing.
+
+## View logs
+
+After deploying, logs appear in two places:
+
+**Durable Objects logs** - High-level operations
+1. Go to [Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages) on the Cloudflare dashboard
+2. Select your Worker → **Bindings** → Select the **Sandbox** Durable Object binding → **Logs**
+
+**Container logs** - Detailed execution
+1. Go to [Containers](https://dash.cloudflare.com/?to=/:account/containers) on the Cloudflare dashboard
+2. Select your container → **Logs**
+
+## Debug with trace IDs
+
+The Sandbox SDK automatically adds trace IDs to all logs. Use them to follow a request across Durable Objects and Containers.
+
+### Find trace IDs
+
+Every log entry includes a `traceId` field:
+
+```json
+{
+  "level": "info",
+  "msg": "Command execution started",
+  "traceId": "tr_7f3a9b2c4e5d6f1a",
+  "sandboxId": "user-123",
+  "command": "python analyze.py"
+}
+```
+
+### Follow a request
+
+1. Find any log related to your request
+2. Copy the `traceId` value
+3. Filter both Durable Objects and Container logs with: `traceId:"tr_7f3a9b2c4e5d6f1a"`
+4. View the complete flow
+
+Example - debugging a failed command:
+
+```json
+// Durable Objects log
+{
+  "msg": "Command execution started",
+  "traceId": "tr_7f3a9b2c4e5d6f1a",
+  "sandboxId": "user-123",
+  "command": "python analyze.py"
+}
+
+// Container log
+{
+  "level": "error",
+  "msg": "Command execution failed",
+  "traceId": "tr_7f3a9b2c4e5d6f1a",
+  "exitCode": 1,
+  "stderr": "ModuleNotFoundError: No module named 'pandas'"
+}
+```
+
+The trace ID connects both logs, showing the command failed due to a missing dependency.
+
+## Reduce log volume
+
+For high-traffic applications, sample logs to reduce costs:
+
+```jsonc
+{
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1  // Log 10% of requests
+  }
+}
+```
+
+## Troubleshooting
+
+### Logs not appearing
+
+If you don't see logs:
+- Verify `observability.enabled: true` in `wrangler.jsonc`
+- Deploy your Worker (logs don't appear locally)
+- Wait a few seconds after deployment
+- Check you're viewing the correct Worker/Container
+
+### Can't find specific request
+
+1. Check both Durable Objects and Container logs
+2. Search by `sandboxId` if you know it
+3. Filter by time range around when the request occurred
+4. Use trace IDs to see the full request flow
+
+## Related resources
+
+- [Workers Logs](/workers/observability/logs/workers-logs/) - Log streaming and analysis
+- [Containers logs FAQ](/containers/faq/#how-do-container-logs-work) - Container-specific logging
+- [Durable Objects logs](/durable-objects/observability/metrics-and-analytics/#view-logs) - DO logging details
